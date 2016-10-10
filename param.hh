@@ -33,8 +33,10 @@ inline auto apply(F && f, T && t) {
 template <typename T>
 auto make_param_impl(T&& t);
 
+class param_base {};
+
 template <typename T>
-class param_impl {
+class param_impl:public param_base {
 public:
 	typename std::remove_reference<T>::type m_params;
 
@@ -48,24 +50,29 @@ public:
 	}
 
 	template <typename F>
-	auto operator>>=(F&& f) {
+	auto operator|(F&& f) const {
 		return  apply(f, m_params);
 	}
 
 	template <typename F>
-	auto operator>>=(const  F& f) {
+	auto operator|(const  F& f) const  {
 		return  apply(f, m_params);
 	}
 	template <typename F>
-	auto operator>>=(F& f) {
+	auto operator|(F& f) const  {
 		return  apply(f, m_params);
 	}
 };
+
+
+
+
+
 template <typename T>
 auto make_param_impl(T&& t) {
 	return param_impl<T>(std::forward<T>(t));
 }
-class param {
+class param :public param_base {
 public:
 	template<typename T>
 	auto operator<< (T&& t) const {
@@ -73,7 +80,7 @@ public:
 	}
 
 	template<typename F>
-	auto operator>>= (F&& f) const {
+	auto operator | (F&& f) const {
 		return f();
 	}
 };

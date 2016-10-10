@@ -4,7 +4,7 @@
 #include <type_traits>
 #include "param.hh"
 #include <xtr1common>
-
+#include "param.hh"
 
 
 #define  DEFINE_PROC0(name, nextProcessorName)     class name ## imple { public: \
@@ -175,18 +175,31 @@ template < typename NEXT_T,typename... BLOCKS_T>\
 
 
 
+ enum class enabler_t {};
 
- 
-   template <typename T, typename PROCESSOR_T>
-   auto operator|(T&& t, procImple<PROCESSOR_T>& rhs) {
-     return rhs(std::forward<T>(t));
-   }
- 
-   template <typename T, typename PROCESSOR_T>
-   auto operator|(T&& t, procImple<PROCESSOR_T>&& rhs){
-     return rhs(std::forward<T>(t));
-   }
+ template<typename T>
+ using EnableIf = typename std::enable_if<T::value, enabler_t>::type;
 
+
+
+ template <typename T>
+ class is_not_param {
+ public:
+	 enum { value = !std::is_base_of<param_base, std::remove_all_extents<T>::type>::value };
+ };
+
+
+  template <typename T, typename PROCESSOR_T, typename std::enable_if<is_not_param<T>::value, enabler_t>::type... >
+  auto operator|(T&& t, procImple<PROCESSOR_T>& rhs) {
+	 
+    return rhs(std::forward<T>(t));
+  }
+
+  template <typename T, typename PROCESSOR_T, typename std::enable_if<is_not_param<T>::value, enabler_t>::type... >
+  auto operator|(T&& t, procImple<PROCESSOR_T>&& rhs) {
+	
+    return rhs(std::forward<T>(t));
+  }
 
 
 
