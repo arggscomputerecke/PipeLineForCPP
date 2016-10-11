@@ -50,7 +50,7 @@ template < typename NEXT_T,typename... BLOCKS_T>\
   enum procReturn {
     success,
     stop_,
-    fail
+    skip
   };
 
 
@@ -107,15 +107,13 @@ template < typename NEXT_T,typename... BLOCKS_T>\
 
     template<typename Next_t, typename... ARGS>
     auto operator()(Next_t&& next, ARGS&&... in) {
-      if (t(next, in...) != procReturn::success) {
-        return procReturn::stop_;
+	  procReturn ret = t(next, in...);
+      if (ret != procReturn::success) {
+        return ret;
       }
 
-      if (n(next, in...) != procReturn::success) {
-        return procReturn::stop_;
-      }
-
-      return   procReturn::success;
+	  return  n(next, in...);
+ 
     }
   };
   template<typename T1, typename T2>
@@ -155,6 +153,11 @@ template < typename NEXT_T,typename... BLOCKS_T>\
       return make_proImple(make_outterLamda(m_pro, n.m_pro));
     }
 
+	template <typename NEXT>
+	auto operator >> (procImple<NEXT>& n) {
+
+		return make_proImple(make_outterLamda(m_pro, n.m_pro));
+	}
     template <typename NEXT>
     auto operator+(NEXT&& n) {
       return make_proImple(make_plus(m_pro,n));
@@ -169,6 +172,10 @@ template < typename NEXT_T,typename... BLOCKS_T>\
     auto operator+(const procImple<NEXT>& n) {
       return make_proImple(make_plus(m_pro, n.m_pro));
     }
+	template <typename NEXT>
+	auto operator+(procImple<NEXT>& n) {
+		return make_proImple(make_plus(m_pro, n.m_pro));
+	}
   };
 
 
@@ -224,6 +231,10 @@ template < typename NEXT_T,typename... BLOCKS_T>\
     auto operator >> (const procImple<T>& t) {
       return make_proImple(std::forward<T>(t.m_pro));
     }
+	template <typename T>
+	auto operator >> (procImple<T>& t) {
+		return make_proImple(std::forward<T>(t.m_pro));
+	}
   };
 
   class stop{
