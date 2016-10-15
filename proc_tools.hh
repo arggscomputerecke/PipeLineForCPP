@@ -3,6 +3,7 @@
 #include "proc.hh"
 #include <vector>
 #include <type_traits>
+#include "TRandom.h"
 
 
 template <typename T>
@@ -301,6 +302,25 @@ THFill_impl<T> THFill(T& histo__) {
 	return THFill_impl<T>(histo__);
 }
 
+
+class add_random {
+	static unsigned getSeed() {
+		static unsigned m_seed = 0;
+		return ++m_seed;
+	}
+public:
+	TRandom m_rand;
+	double m_start = 0, m_end = 1;
+	add_random(double start_ = 0, double end__ = 1) : m_rand(add_random::getSeed()), m_start(start_), m_end(end__) {}
+	add_random() : m_rand(add_random::getSeed()) {}
+
+
+	template <typename NEXT_T, typename... ARGS>
+	procReturn operator()(NEXT_T&& next, ARGS&&... args) {
+		return next(args..., (m_end - m_start)*m_rand.Rndm() + m_start);
+	}
+
+};
 template<typename T>
 void print__(T&& t) {
 	std::cout << t << std::endl;
