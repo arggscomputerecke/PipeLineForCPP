@@ -23,14 +23,15 @@ struct ___IS_ALL_INT {
 
 
 
-
 class for_loop_imple_0 {
 
 public:
 	template <typename NEXT_T, typename T>
 	procReturn operator()(NEXT_T&& next, T t) {
 		for (typename std::remove_all_extents<T>::type i = 0; i < t;++i) {
-			next(i);
+			if (next(i) == stop_) {
+				return stop_;
+			}
 		}
 
 		return success;
@@ -40,7 +41,7 @@ public:
 	procReturn operator()(NEXT_T&& next, const std::vector<T>& vec) {
 		for (auto& e : vec) {
 			if (next(e) == stop_) {
-				break;
+				return stop_;
 			}
 		}
 
@@ -48,9 +49,12 @@ public:
 	}
 	template <typename NEXT_T, typename T1, typename T2>
 	procReturn  operator()(NEXT_T&& next, T1 start_, T2 end_) {
-		for (typename ___IS_BOTH_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type>::type i = start_; i < end_;++i) {
+		for (typename ___IS_BOTH_INT<
+							typename std::remove_all_extents<T1>::type, 
+							typename std::remove_all_extents<T2>::type
+						>::type i = start_; i < end_;++i) {
 			if (next(i) == stop_) {
-				break;
+				return stop_;
 			}
 		}
 
@@ -65,9 +69,13 @@ public:
 	template <typename NEXT_T, typename T1, typename T2, typename T3>
 	procReturn operator()(NEXT_T&& next, T1 start_, T2 end_, T3 step) {
 
-		for (typename ___IS_ALL_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type, typename std::remove_all_extents<T3>::type>::type i = start_; i < end_;i += step) {
+		for (typename ___IS_ALL_INT<
+							typename std::remove_all_extents<T1>::type, 
+							typename std::remove_all_extents<T2>::type, 
+							typename std::remove_all_extents<T3>::type
+						>::type i = start_; i < end_;i += step) {
 			if (next(i) == stop_) {
-				break;
+				return stop_;
 			}
 		}
 
@@ -89,7 +97,9 @@ public:
 	template <typename NEXT_T , typename... ARGS>
 	procReturn operator()(NEXT_T&& next, ARGS&&... args) {
 		for ( param_t i = 0; i < m_end;++i) {
-			next(args...,i);
+			if (next(std::forward<ARGS>(args)..., i) == stop_) {
+				return stop_;
+			}
 		}
 
 		return success;
@@ -114,7 +124,9 @@ public:
 	template <typename NEXT_T, typename... ARGS>
 	procReturn operator()(NEXT_T&& next, ARGS&&... args) {
 		for ( param_t i = m_start; i < m_end;++i) {
-			next(std::forward<ARGS>(args)..., i);
+			if (next(std::forward<ARGS>(args)..., i) == stop_) {
+				return stop_;
+			}
 		}
 
 		return success;
@@ -142,7 +154,9 @@ public:
 	template <typename NEXT_T, typename... ARGS>
 	procReturn operator()(NEXT_T&& next, ARGS&&... args) {
 		for ( param_t i = m_start; i < m_end; i += m_step) {
-			next(std::forward<ARGS>(args)..., i);
+			if (next(std::forward<ARGS>(args)..., i) == stop_) {
+				return stop_;
+			}
 		}
 
 		return success;
