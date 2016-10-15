@@ -3,6 +3,10 @@
 #include "proc.hh"
 #include <vector>
 #include <type_traits>
+#include "TGraph.h"
+#include "TGraph2D.h"
+#include "TH1.h"
+#include "TH2.h"
 #include "TRandom.h"
 
 
@@ -172,19 +176,66 @@ for_loop_imple_3<typename ___IS_ALL_INT<typename std::remove_all_extents<T1>::ty
 }
 
 
+
+
+
+template <typename T>
+void ___reset(std::vector<T>* vec) {
+	vec->clear();
+}
+
+
+template <typename T , typename... ARGS>
+void ___Fill(std::vector<T>* vec,ARGS&&... args) {
+	vec->emplace_back( std::forward<ARGS>(args)...);
+}
+
+void ___reset(TGraph2D* g) {
+	g->Set(0);
+	g->Clear();
+}
+
+void ___reset(TH1* h) {
+	h->Reset();
+}
+
+
+void ___reset(TH2* h) {
+	h->Reset();
+}
+
+template<typename T1, typename T2>
+void ___Fill(TGraph* g, T1 x, T2 y) {
+	g->SetPoint(g->GetN(), x, y);
+}
+
+template<typename... ARGS>
+void ___Fill(TH1* g, ARGS&&... args) {
+	g->Fill(std::forward<ARGS>(args)...);
+}
+
+template<typename... ARGS>
+void ___Fill(TH2* g, ARGS&&... args) {
+	g->Fill(std::forward<ARGS>(args)...);
+}
+template<typename T1, typename... ARGS>
+void ___Fill(TGraph2D* g, ARGS&&... args) {
+	g->SetPoint(g->GetN(), std::forward<ARGS>(args)...);
+}
+template<typename T>
 class push_impl {
 	T* m_graph;
 public:
 
 	push_impl(T* t) :m_graph(t) {
-		m_graph->Set(0);
+		___reset(m_graph);
 	}
 
 
 
 	template <typename NEXT_T, typename... ARGS>
 	procReturn operator()(NEXT_T&& next, ARGS... args) {
-		m_graph->SetPoint(m_graph->GetN(), args...);
+		___Fill(m_graph, args...);
 		return next(args...);
 	}
 };
