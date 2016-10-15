@@ -5,6 +5,10 @@
 #include <type_traits>
 
 
+template <typename T>
+std::vector<T> make_vec(std::initializer_list<T> l) {
+	return std::vector<T>(l);
+}
 
 template <typename T1, typename T2>
 struct ___IS_BOTH_INT {
