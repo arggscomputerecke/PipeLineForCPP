@@ -219,6 +219,118 @@ public:
 private:
 	const	std::vector<double>& vec;
 };
+
+template< std::size_t N,typename T>
+struct add_impl {};
+
+template<typename T>
+struct add_impl<0,T> {
+	add_impl<0,T>(const T& t_) : t(t_) {}
+	const T t;
+	template <typename NEXT_T, typename... args>
+	procReturn operator()(NEXT_T&& next,  args... ar) const {
+		return next(t,ar...);
+	}
+};
+
+template<typename T>
+struct add_impl<1,T> {
+	add_impl<1,T>(const T& t_) : t(t_) {}
+	const T t;
+	template <typename NEXT_T, typename T1, typename... args>
+	procReturn operator()(NEXT_T&& next, T1&& t1, args... ar) const {
+		return next(std::forward<T1>(t1),t, ar...);
+	}
+};
+
+
+template<typename T>
+struct add_impl<2,T> {
+	add_impl<2,T>(const T& t_) : t(t_) {}
+	const T t;
+	template <typename NEXT_T, typename T1, typename T2, typename... args>
+	procReturn operator()(NEXT_T&& next, T1&& t1, T2&& t2, args... ar) const {
+		return next(std::forward<T1>(t1), std::forward<T2>(t2), t, ar...);
+	}
+};
+
+template<typename T>
+struct add_impl<3,T> {
+	add_impl<3,T>(const T& t_) : t(t_) {}
+	const T t;
+	template <typename NEXT_T, typename T1, typename T2, typename T3, typename... args>
+	procReturn operator()(NEXT_T&& next, T1&& t1, T2&& t2, T3&& t3, args... ar) const {
+		return next(std::forward<T1>(t1), std::forward<T2>(t2), std::forward<T3>(t3), t, ar...);
+	}
+};
+
+
+template<typename T>
+struct add_impl<4,T> {
+	add_impl<4,T>(const T& t_) : t(t_) {}
+	const T t;
+	template <typename NEXT_T, typename T1, typename T2, typename T3, typename T4, typename... args>
+	procReturn operator()(NEXT_T&& next, T1&& t1, T2&& t2, T3&& t3, T4&& t4, args... ar) const {
+		return next(std::forward<T1>(t1), std::forward<T2>(t2), std::forward<T3>(t3), std::forward<T4>(t4), t, ar...);
+	}
+};
+
+template<std::size_t N, typename T>
+add_impl<N,T> add(T&& t) {
+	return add_impl<N,std::remove_all_extents<T>::type >(std::forward<T>(t));
+}
+
+template<std::size_t N>
+struct drop {
+
+};
+
+template<>
+struct drop<0> {
+	template <typename NEXT_T, typename T, typename... args>
+	procReturn operator()(NEXT_T&& next, T i, args... ar) const {
+
+		return next(ar...);
+	}
+};
+
+template<>
+struct drop<1> {
+	template <typename NEXT_T, typename T, typename T2, typename... args>
+	procReturn operator()(NEXT_T&& next, T&& i, T2&&, args... ar) const {
+
+		return next(std::forward<T>(i), ar...);
+	}
+};
+
+template<>
+struct drop<2> {
+	template <typename NEXT_T, typename T, typename T2, typename T3, typename... args>
+	procReturn operator()(NEXT_T&& next, T&& i, T2&& t2, T3&& t3, args... ar) const {
+
+		return next(std::forward<T>(i), std::forward<T2>(t2), ar...);
+	}
+};
+
+template<>
+struct drop<3> {
+	template <typename NEXT_T, typename T, typename T2, typename T3, typename T4, typename... args>
+	procReturn operator()(NEXT_T&& next, T&& i, T2&& t2, T3&& t3, T4&& t4, args... ar) const {
+
+		return next(std::forward<T>(i), std::forward<T2>(t2), std::forward<T3>(t3), ar...);
+	}
+};
+
+
+template<>
+struct drop<4> {
+	template <typename NEXT_T, typename T, typename T2, typename T3, typename T4, typename T5, typename... args>
+	procReturn operator()(NEXT_T&& next, T&& i, T2&& t2, T3&& t3, T4&& t4, T5&& t5, args... ar) const {
+
+		return next(std::forward<T>(i), std::forward<T2>(t2), std::forward<T3>(t3), std::forward<T4>(t4), ar...);
+	}
+};
+
 class remove_first {
 public:
 
