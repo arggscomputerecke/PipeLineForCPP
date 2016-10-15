@@ -6,22 +6,21 @@
 
 
 
-
-
-template <typename T1, typename T2> 
+template <typename T1, typename T2>
 struct ___IS_BOTH_INT {
 	using type = typename std::conditional<std::is_same<T1, T2>::value, T1, double>::type;
 };
 
 
-template <typename T1, typename T2,typename T3>
+template <typename T1, typename T2, typename T3>
 struct ___IS_ALL_INT {
 	using type = typename ___IS_BOTH_INT<T1, typename ___IS_BOTH_INT<T2, T3>::type>::type;
 };
 
 
 
-class for_loop {
+
+class for_loop_imple_0 {
 
 public:
 	template <typename NEXT_T, typename T>
@@ -45,7 +44,7 @@ public:
 	}
 	template <typename NEXT_T, typename T1, typename T2>
 	procReturn  operator()(NEXT_T&& next, T1 start_, T2 end_) {
-		for (typename  ___IS_BOTH_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type>::type i = start_; i < end_;++i) {
+		for (typename ___IS_BOTH_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type>::type i = start_; i < end_;++i) {
 			if (next(i) == stop_) {
 				break;
 			}
@@ -71,11 +70,89 @@ public:
 		return success;
 	}
 };
+for_loop_imple_0 for_loop() {
+	return for_loop_imple_0{};
+}
 
 
+template<typename END_T>
+class for_loop_imple_1 {
+	using param_t = typename std::remove_all_extents<END_T>::type;
+public:
+	const param_t m_end;
+	for_loop_imple_1<END_T>(const END_T& end__) :m_end(end__) {}
+	for_loop_imple_1<END_T>(END_T&& end__) : m_end(std::move(end__)) {}
+	template <typename NEXT_T , typename... ARGS>
+	procReturn operator()(NEXT_T&& next, ARGS&&... args) {
+		for ( param_t i = 0; i < m_end;++i) {
+			next(args...,i);
+		}
+
+		return success;
+	}
+
+
+};
+
+
+template <typename T>
+for_loop_imple_1<typename std::remove_all_extents<T>::type> for_loop(T&& t) {
+	return for_loop_imple_1<typename std::remove_all_extents<T>::type>(std::forward<T>(t));
+}
+
+template<typename T>
+class for_loop_imple_2 {
+	using param_t = typename std::remove_all_extents<T>::type;
+public:
+	const param_t m_end;
+	const param_t m_start;
+	for_loop_imple_2<T>(const T& start__,const T& end__) : m_start(start__),m_end(end__) {}
+	template <typename NEXT_T, typename... ARGS>
+	procReturn operator()(NEXT_T&& next, ARGS&&... args) {
+		for ( param_t i = m_start; i < m_end;++i) {
+			next(std::forward<ARGS>(args)..., i);
+		}
+
+		return success;
+	}
+
+
+};
+
+
+
+template <typename T1, typename T2>
+for_loop_imple_2<typename ___IS_BOTH_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type>::type> for_loop(T1&& start_ , T2&& end_) {
+	return for_loop_imple_2<typename ___IS_BOTH_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type>::type>(std::forward<T1>(start_), std::forward<T2>(end_));
+}
 
 
 template<typename T>
+class for_loop_imple_3 {
+	using param_t = typename std::remove_all_extents<T>::type;
+public:
+	const param_t m_end;
+	const param_t m_start;
+	const param_t m_step;
+	for_loop_imple_3<T>(const T& start__, const T& end__ ,const T& step_) : m_start(start__), m_end(end__) , m_step(step_){}
+	template <typename NEXT_T, typename... ARGS>
+	procReturn operator()(NEXT_T&& next, ARGS&&... args) {
+		for ( param_t i = m_start; i < m_end; i += m_step) {
+			next(std::forward<ARGS>(args)..., i);
+		}
+
+		return success;
+	}
+
+
+};
+
+template <typename T1, typename T2,typename T3>
+for_loop_imple_3<typename ___IS_ALL_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type, typename std::remove_all_extents<T3>::type>::type> for_loop(T1&& start_, T2&& end_,T3&& step_) {
+	return for_loop_imple_3<typename ___IS_ALL_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type, typename std::remove_all_extents<T3>::type>::type>(std::forward<T1>(start_), std::forward<T2>(end_),std::forward<T3>(step_));
+}
+
+
 class push_impl {
 	T* m_graph;
 public:
