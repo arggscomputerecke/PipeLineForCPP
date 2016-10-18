@@ -8,7 +8,7 @@
 #include "TH1.h"
 #include "TH2.h"
 #include "TRandom.h"
-
+#include <fstream>
 
 template <typename T>
 std::vector<T> make_vec(std::initializer_list<T> l) {
@@ -263,9 +263,16 @@ void ___reset(TH2* h) {
 	h->Reset();
 }
 
-template<typename T1, typename T2>
-void ___Fill(TGraph* g, T1 x, T2 y) {
-	g->SetPoint(g->GetN(), x, y);
+
+template<typename T, typename... ARGS>
+void ___Fill(T* g, ARGS&&... args);
+
+template<typename T>
+void ___reset(T* h);
+
+template<typename... ARGS>
+void ___Fill(TGraph* g, ARGS&&... args) {
+	g->SetPoint(g->GetN(), std::forward<ARGS>(args)...);
 }
 
 template<typename... ARGS>
@@ -277,10 +284,14 @@ template<typename... ARGS>
 void ___Fill(TH2* g, ARGS&&... args) {
 	g->Fill(std::forward<ARGS>(args)...);
 }
-template<typename T1, typename... ARGS>
+template< typename... ARGS>
 void ___Fill(TGraph2D* g, ARGS&&... args) {
 	g->SetPoint(g->GetN(), std::forward<ARGS>(args)...);
 }
+
+void ___reset(std::ofstream*);
+
+template<typename... ARGS> void ___Fill(std::ofstream* out, ARGS&&... args);
 template<typename T>
 class push_impl {
 	T* m_graph;
@@ -387,7 +398,7 @@ struct add_impl<4,T> {
 
 template<std::size_t N, typename T>
 add_impl<N,T> add(T&& t) {
-	return add_impl<N,std::remove_all_extents<T>::type >(std::forward<T>(t));
+	return add_impl<N, typename std::remove_all_extents<T>::type >(std::forward<T>(t));
 }
 
 template<std::size_t N>
@@ -445,9 +456,9 @@ class remove_first {
 public:
 
 	template <typename NEXT_T, typename T, typename... args>
-	procReturn operator()(NEXT_T&& next, T i, args... ar) const {
+	procReturn operator()(NEXT_T&& next, T i, args&&... ar) const {
 
-		return next(ar...);
+		return next(std::forward<args>(ar)...);
 	}
 
 };
@@ -460,9 +471,9 @@ public:
 
 	}
 	template <typename NEXT_T, typename... ARGS>
-	procReturn operator()(NEXT_T&& next, ARGS... i) const {
+	procReturn operator()(NEXT_T&& next, ARGS... args) const {
 
-		return next(i..., m_f(i...));
+		return next(std::forward<ARGS>(args)..., m_f(args...));
 	}
 
 };
@@ -485,7 +496,7 @@ public:
 	procReturn operator()(NEXT_T&& next, ARGS&&... args) {
 
 		m_histo__.Fill(args...);
-		return next(args...);
+		return next(std::forward<ARGS>(args)...);
 	}
 
 
@@ -511,23 +522,23 @@ public:
 
 	template <typename NEXT_T, typename... ARGS>
 	procReturn operator()(NEXT_T&& next, ARGS&&... args) {
-		return next(args..., (m_end - m_start)*m_rand.Rndm() + m_start);
+		return next(std::forward<ARGS>(args)..., (m_end - m_start)*m_rand.Rndm() + m_start);
 	}
 
 };
 template<typename T>
-void print__(T&& t) {
-	std::cout << t << std::endl;
+void print__(std::ostream& out, T&& t) {
+	out << t << std::endl;
 }
 template<typename T, typename... ARGS>
-void print__(T&& t, ARGS&&... args) {
-	std::cout << t << "  ";
-	print__(args...);
+void print__(std::ostream& out,T&& t, ARGS&&... args) {
+	out << t << "  ";
+	print__(out,std::forward<ARGS>(args)...);
 }
 
 DEFINE_PROC_V(display, nextP, inPut) {
 
-	print__(inPut...);
+	print__(std::cout, inPut...);
 	return nextP(inPut...);
 }
 
@@ -543,4 +554,9 @@ DEFINE_PROC_V(while_true, nextP, input_) {
 	return nextP(input_...);
 }
 
+
+
+
+
 #endif // proc_tools_h__
+
