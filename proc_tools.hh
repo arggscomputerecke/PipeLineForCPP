@@ -176,7 +176,66 @@ for_loop_imple_3<typename ___IS_ALL_INT<typename std::remove_all_extents<T1>::ty
 }
 
 
+template<typename T>
+class for_loop_impl_vec {
+public:
+	const std::vector<T>& m_vec;
+	for_loop_impl_vec(const std::vector<T>& vec) :m_vec(vec) {
 
+	}
+
+	template <typename NEXT_T, typename... ARGS>
+	procReturn operator()(NEXT_T&& next, ARGS&&... args) {
+		for (auto& e : m_vec) {
+			auto ret = next(args..., e);
+			if (ret != success) {
+				return ret;
+			}
+		}
+
+		return success;
+	}
+
+
+};
+
+
+template<typename T>
+class for_loop_impl_vec_RV {
+public:
+	const std::vector<T> m_vec;
+	for_loop_impl_vec_RV(std::vector<T>&& vec) :m_vec(std::move(vec)) {
+
+	}
+
+	template <typename NEXT_T, typename... ARGS>
+	procReturn operator()(NEXT_T&& next, ARGS&&... args) {
+		for (auto& e : m_vec) {
+			auto ret = next(args..., e);
+			if (ret != success) {
+				return ret;
+			}
+		}
+
+		return success;
+	}
+
+
+};
+template <typename T>
+for_loop_impl_vec<T> for_loop(const std::vector<T>& vec) {
+	return for_loop_impl_vec<T>(vec);
+}
+
+template <typename T>
+for_loop_impl_vec<T> for_loop(std::vector<T>& vec) {
+	return for_loop_impl_vec<T>(vec);
+}
+
+template <typename T>
+for_loop_impl_vec_RV<T> for_loop(std::vector<T>&& vec) {
+	return for_loop_impl_vec_RV<T>(std::move(vec));
+}
 
 
 template <typename T>
@@ -411,34 +470,6 @@ public:
 template<typename T>
 calc_impl<typename std::remove_all_extents<T>::type > calc(T&& t) {
 	return calc_impl<typename std::remove_all_extents<T>::type >(std::forward<T>(t));
-}
-
-template<typename T>
-class loop_impl {
-public:
-	const T& m_vec;
-	loop_impl(const T& vec) :m_vec(vec) {
-
-	}
-
-	template <typename NEXT_T, typename... ARGS>
-	procReturn operator()(NEXT_T&& next, ARGS&&... args) {
-		for (auto& e : m_vec) {
-			auto ret = next(args..., e);
-			if (ret != success) {
-				return ret;
-			}
-		}
-
-		return success;
-	}
-
-
-};
-
-template <typename T>
-loop_impl<T> loop(const T& vec) {
-	return loop_impl<T>(vec);
 }
 
 
