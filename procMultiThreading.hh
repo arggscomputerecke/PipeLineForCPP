@@ -7,6 +7,7 @@
 
 #include "proc.hh"
 #include "procReturn.hh"
+#include <algorithm>
 
 
 class thread_handler {
@@ -57,17 +58,16 @@ public:
   template<typename Next_t>
   auto operator()(Next_t&& next_, int start_, int end_, int step_) {
     std::vector<std::thread> threads;
-    const int numOfThreads = m_num;
-    auto thread_handler__ = m_th;
+
     for (int j = 0;j < m_num; ++j) {
-      threads.push_back(std::thread([next_, start_, step_, end_, j, numOfThreads, thread_handler__]() mutable {
+      threads.push_back(std::thread([next_, start_, step_, end_, j, numOfThreads= m_num, thread_handler__= m_th]() mutable {
         for (auto i = start_ + step_ * j; i < end_;i += (step_ * numOfThreads)) {
           next_(i);
           thread_handler__->update();
         }
       }));
 
-      thread_handler__->push(threads.back().get_id());
+      m_th->push(threads.back().get_id());
     }
 
     for (auto&e : threads) {
@@ -76,15 +76,20 @@ public:
 
     return success;
   }
+
+  template<typename Next_t>
+  auto operator()(Next_t&& next_, int start_, int end_) {
+    return operator()(std::forward<Next_t>(next_), start_, end_, 1);
+  }
+
+  template<typename Next_t>
+  auto operator()(Next_t&& next_, int end_) {
+    return operator()(std::forward<Next_t>(next_), 0, end_, 1);
+  }
 private:
   const  int m_num;
   thread_handler* m_th;
 };
-
-
-
-
-
 
 
 
@@ -97,10 +102,10 @@ public:
   template<typename Next_t>
   auto operator()(Next_t&& next_, int start_, int end_, int step_) {
     std::vector<std::thread> threads;
-    const int numOfThreads = m_num;
+
     for (int j = 0;j < m_num; ++j) {
       threads.push_back(
-        std::thread([next_, start_, step_, end_, j, numOfThreads]() mutable {
+        std::thread([next_, start_, step_, end_, j, numOfThreads= m_num]() mutable {
         for (auto i = start_ + step_*j; i < end_;i += (step_ * numOfThreads)) {
           next_(i);
         }
@@ -114,6 +119,14 @@ public:
     }
 
     return success;
+  }
+  template<typename Next_t>
+  auto operator()(Next_t&& next_, int start_, int end_) {
+    return operator()(std::forward<Next_t>(next_), start_, end_, 1);
+  }
+  template<typename Next_t>
+  auto operator()(Next_t&& next_, int end_) {
+    return operator()(std::forward<Next_t>(next_), 0, end_, 1);
   }
 private:
   const  int m_num;
