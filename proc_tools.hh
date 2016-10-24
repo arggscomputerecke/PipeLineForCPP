@@ -9,6 +9,8 @@
 #include "TH2.h"
 #include "TRandom.h"
 #include <fstream>
+#include "procMultiThreading.hh"
+
 
 template <typename T>
 std::vector<T> make_vec(std::initializer_list<T> l) {
@@ -286,12 +288,10 @@ template<>
 void ___Fill<TH1D, double&, double&>(TH1D* g, double& x, double& w) {
   g->Fill(x,w);
 }
-
 template<>
 void ___Fill<TH2D, double&, double&>(TH2D* g, double& x, double& y) {
   g->Fill(x, y);
 }
-
 
 template<>
 void ___Fill<TH2D, double&, double&, double&>(TH2D* g, double& x, double& y, double& w) {
@@ -571,6 +571,14 @@ template<typename T, typename... ARGS>
 void print__(std::ostream& out,T&& t, ARGS&&... args) {
 	out << t << "  ";
 	print__(out,std::forward<ARGS>(args)...);
+}
+template<typename T>
+void print__(std::ostream& out, std::vector<T>& t) {
+  for (auto& e :t)
+  {
+    out << e <<"   ";
+  }
+  out << std::endl;
 }
 
 DEFINE_PROC_V(display, nextP, inPut) {
