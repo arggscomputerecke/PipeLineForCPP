@@ -310,9 +310,7 @@ public:
      >>get_element(*m_intput_x)
      >>get_element(*m_intput_y) 
      >> drop<0>()
-     //>> display()
-      >> m_push
-     ;
+      >> m_push ;
 
 
     return success;
@@ -481,9 +479,7 @@ public:
       >> get_element(*m_pl.x)
       >> get_element(*m_pl.y)
       >> remove_first()
-     // >> add<0> ("test") >> display() >> drop<0>()
       >> cut_op(m_f)
-     // >> display()
       >> push_first(x)
       >> push_first(y);
 
@@ -529,9 +525,7 @@ public:
       >> get_element(*m_pl.x)
       >> get_element(*m_pl.y)
       >> remove_first()
-      // >> add<0> ("test") >> display() >> drop<0>()
       >> transform_proc(m_f)
-      // >> display()
       >> push_first(x)
       >> push_first(y);
 
