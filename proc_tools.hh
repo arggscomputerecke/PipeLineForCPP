@@ -15,15 +15,15 @@ std::vector<T> make_vec(std::initializer_list<T> l) {
 	return std::vector<T>(l);
 }
 
-template <typename T1, typename T2>
+template <typename T1, typename T2 ,typename DEFLAULT_T>
 struct ___IS_BOTH_INT {
-	using type = typename std::conditional<std::is_same<T1, T2>::value, T1, double>::type;
+	using type = typename std::conditional<std::is_same<typename std::remove_all_extents<T1>::type,typename std::remove_all_extents<T2>::type>::value,typename std::remove_all_extents<T1>::type, DEFLAULT_T>::type;
 };
 
 
-template <typename T1, typename T2, typename T3>
+template <typename T1, typename T2, typename T3, typename DEFLAULT_T>
 struct ___IS_ALL_INT {
-	using type = typename ___IS_BOTH_INT<T1, typename ___IS_BOTH_INT<T2, T3>::type>::type;
+	using type = typename ___IS_BOTH_INT<typename std::remove_all_extents<T2>::type, typename ___IS_BOTH_INT<T2, T3, DEFLAULT_T>::type, DEFLAULT_T>::type;
 };
 
 
@@ -56,7 +56,7 @@ public:
 	procReturn  operator()(NEXT_T&& next, T1 start_, T2 end_) {
 		for (typename ___IS_BOTH_INT<
 							typename std::remove_all_extents<T1>::type, 
-							typename std::remove_all_extents<T2>::type
+							typename std::remove_all_extents<T2>::type,double
 						>::type i = start_; i < end_;++i) {
 			if (next(i) == stop_) {
 				return stop_;
@@ -77,7 +77,7 @@ public:
 		for (typename ___IS_ALL_INT<
 							typename std::remove_all_extents<T1>::type, 
 							typename std::remove_all_extents<T2>::type, 
-							typename std::remove_all_extents<T3>::type
+							typename std::remove_all_extents<T3>::type,double
 						>::type i = start_; i < end_;i += step) {
 			if (next(i) == stop_) {
 				return stop_;
@@ -143,8 +143,8 @@ public:
 
 
 template <typename T1, typename T2>
-for_loop_imple_2<typename ___IS_BOTH_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type>::type> for_loop(T1&& start_ , T2&& end_) {
-	return for_loop_imple_2<typename ___IS_BOTH_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type>::type>(std::forward<T1>(start_), std::forward<T2>(end_));
+for_loop_imple_2<typename ___IS_BOTH_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type,double>::type> for_loop(T1&& start_ , T2&& end_) {
+	return for_loop_imple_2<typename ___IS_BOTH_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type, double>::type>(std::forward<T1>(start_), std::forward<T2>(end_));
 }
 
 
@@ -171,8 +171,8 @@ public:
 };
 
 template <typename T1, typename T2,typename T3>
-for_loop_imple_3<typename ___IS_ALL_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type, typename std::remove_all_extents<T3>::type>::type> for_loop(T1&& start_, T2&& end_,T3&& step_) {
-	return for_loop_imple_3<typename ___IS_ALL_INT<typename std::remove_all_extents<T1>::type, typename std::remove_all_extents<T2>::type, typename std::remove_all_extents<T3>::type>::type>(std::forward<T1>(start_), std::forward<T2>(end_),std::forward<T3>(step_));
+for_loop_imple_3<typename ___IS_ALL_INT<T1, T2, T3, double>::type> for_loop(T1&& start_, T2&& end_,T3&& step_) {
+	return for_loop_imple_3<typename ___IS_ALL_INT<T1, T2, T3, double>::type>(std::forward<T1>(start_), std::forward<T2>(end_),std::forward<T3>(step_));
 }
 
 
@@ -254,14 +254,16 @@ void ___reset(TGraph2D* g) {
 	g->Clear();
 }
 
-void ___reset(TH1* h) {
+void ___reset(TH1D* h) {
 	h->Reset();
 }
 
 
-void ___reset(TH2* h) {
+void ___reset(TH2D* h) {
 	h->Reset();
 }
+
+
 
 
 template<typename T, typename... ARGS>
@@ -275,15 +277,28 @@ void ___Fill(TGraph* g, ARGS&&... args) {
 	g->SetPoint(g->GetN(), std::forward<ARGS>(args)...);
 }
 
-template<typename... ARGS>
-void ___Fill(TH1* g, ARGS&&... args) {
-	g->Fill(std::forward<ARGS>(args)...);
+template<>
+void ___Fill<TH1D,double&>(TH1D* g, double& x) {
+	g->Fill(x);
 }
 
-template<typename... ARGS>
-void ___Fill(TH2* g, ARGS&&... args) {
-	g->Fill(std::forward<ARGS>(args)...);
+template<>
+void ___Fill<TH1D, double&, double&>(TH1D* g, double& x, double& w) {
+  g->Fill(x,w);
 }
+
+template<>
+void ___Fill<TH2D, double&, double&>(TH2D* g, double& x, double& y) {
+  g->Fill(x, y);
+}
+
+
+template<>
+void ___Fill<TH2D, double&, double&, double&>(TH2D* g, double& x, double& y, double& w) {
+  g->Fill(x, y,w);
+}
+
+
 template< typename... ARGS>
 void ___Fill(TGraph2D* g, ARGS&&... args) {
 	g->SetPoint(g->GetN(), std::forward<ARGS>(args)...);
@@ -315,12 +330,34 @@ push_impl<T> push(T* f) {
 	return push_impl<T>(f);
 }
 
+template<typename T>
+class push_impl_RV {
+	T m_graph;
+public:
+
+	push_impl_RV(T&& t) :m_graph(std::move(t)) {
+		___reset(&m_graph);
+	}
+
+
+
+	template <typename NEXT_T, typename... ARGS>
+	procReturn operator()(NEXT_T&& next, ARGS... args) {
+		___Fill(&m_graph, args...);
+		return next(args...);
+	}
+};
+
+template<typename T>
+push_impl_RV<typename std::remove_all_extents<T>::type> push(T&& f) {
+	return push_impl_RV<typename std::remove_all_extents<T>::type >(std::forward<T>(f));
+}
+
 class push_first {
 public:
 	push_first(std::vector<double>& vec_) :vec(vec_) {}
 	template <typename NEXT_T, typename T, typename... args>
 	procReturn operator()(NEXT_T&& next, T x, args&&... ar) const {
-
 		vec.push_back(x);
 
 		return next(ar...);
@@ -550,12 +587,26 @@ DEFINE_PROC1(square, nextP, inPut) {
 
 DEFINE_PROC_V(while_true, nextP, input_) {
 
+  while (true) {
+    auto ret = nextP(input_...);
+    if (ret != success) {
+      return ret;
+    }
+  }
 
-	return nextP(input_...);
+  return success;
+
 }
 
 
 
+void ___reset(std::ofstream*) {}
+
+template<typename... ARGS> void ___Fill(std::ofstream* out, ARGS&&... args) { print__(*out,args...); }
+
+void ___reset(std::shared_ptr<std::ofstream>*) {}
+
+template<typename... ARGS> void ___Fill(std::shared_ptr<std::ofstream>* out, ARGS&&... args) { print__(*out->get(), args...); }
 
 
 #endif // proc_tools_h__

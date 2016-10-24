@@ -122,25 +122,16 @@ public:
 
   }
 
-
-
-
-
   virtual procReturn processEvent() override {
     m_Tracks_x.clear();
     m_Tracks_y.clear();
 
-
-  //  std::cout <<"<" << m_id <<  "   "  << m_coll.ID.size()<<">"   << std::endl;
     for (size_t i = 0; i < m_coll.ID->size();++i) {
       if (m_coll.ID->at(i) == m_id) {
-
         m_Tracks_x.push_back(m_coll.x->at(i));
         m_Tracks_y.push_back(m_coll.y->at(i));
- //       std::cout <<m_id<< "   "<< m_coll.x.at(i) << "   " << m_coll.y.at(i) << std::endl;
       }
     }
-  //  std::cout << "</" << m_id << ">" << std::endl;
     return success;
   }
   plane get_Data() const {
@@ -219,50 +210,194 @@ private:
   const double m_cut_off;
 };
 
+class find_closest_strip :public ProcessorBase {
+public:
+  find_closest_strip(plane x1, plane x2, double cut_off,axes_t ax) :m_x1(x1), m_x2(x2), m_cut_off(cut_off) {
+  if (ax== x_axis){
+    Axes_of_int_1 = x1.x;
+    Axes_of_int_2 = x2.x;
+  } else if (ax == y_axis) {
+    Axes_of_int_1 = x1.y;
+    Axes_of_int_2 = x2.y;
+  } else {
+    std::cout << "unknown Axis \n";
+  }
+
+  }
+
+  virtual procReturn processEvent() override {
+    double r = m_cut_off;
+    double r1 = m_cut_off;
+    m_Tracks_x.clear();
+    m_Tracks_y.clear();
+    hit_xy h1(0, 0);
+    for (size_t i = 0; i < Axes_of_int_1->size(); ++i) {
+      for (size_t j = 0; j < Axes_of_int_2->size(); ++j) {
+
+        double x1_x = Axes_of_int_1->at(i);
+
+        double x2_x = Axes_of_int_2->at(j);
+
+        r1 = TMath::Abs( x1_x-x2_x );
+
+        if (r1 < r) {
+          h1 = hit_xy(m_x1.x->at(i), m_x1.y->at(i));
+          r = r1;
+        }
+      }
+    }
+
+    if (r < m_cut_off) {
+      m_Tracks_x.push_back(h1.x);
+      m_Tracks_y.push_back(h1.y);
+    }
+    return success;
+  }
+  plane get_Data() const {
+    return  plane(&m_Tracks_x, &m_Tracks_y);
+  }
+private:
+  std::vector<double> m_Tracks_x, m_Tracks_y;
+  plane m_x1;
+  plane m_x2;
+  const std::vector<double>* Axes_of_int_1;
+  const std::vector<double>* Axes_of_int_2;
+  const double m_cut_off;
+};
 
 class Correlation :public ProcessorBase {
 public:
-  Correlation(axes vec_x, axes vec_y, const char* name) :
+  Correlation(axes vec_x, axes vec_y) :
     m_intput_x(vec_x.x),
-    m_intput_y(vec_y.x),
-    H2( new TH2D(name, name, 100, -10, 10, 100, -10, 10)) , m_push (push(H2.get())){
+    m_intput_y(vec_y.x){
   }
-
-
-  virtual bool init() override {
-    H2->Reset();
-    return true;
-  }
-
-
-  virtual bool end() override {
-    //H2->Draw("colZ");
-    return true;
-  }
-
-
+  
   virtual procReturn processEvent() override {
-
-   param() | proc() >> for_loop(*m_intput_x) >> for_loop(*m_intput_y)  >> m_push;
+    x.clear();
+    y.clear();
+   param() | proc() >> for_loop(*m_intput_x) >> for_loop(*m_intput_y)  >> push_first(x)>> push_first(y);
 
     return success;
   }
 
-  void Draw() {
-    H2->Draw("colz");
-  }
-  ref_storage<TH2D&> get_Data() {
-    return ref_storage<TH2D&>(*H2);
+
+  plane get_Data() const {
+    return  plane(&x, &y);
   }
 private:
-
-
-  std::shared_ptr<TH2D> H2;
   const std::vector<double>* m_intput_x;
   const std::vector<double>* m_intput_y;
+  std::vector<double> x, y;
+
+};
+
+template<typename HIST_T>
+class Fill_HIST :public ProcessorBase{
+public:
+  template<typename... ARGGS>
+  Fill_HIST(plane pl, ARGGS&&... args) :
+    m_intput_x(pl.x), 
+    m_intput_y(pl.y),
+    h2(new HIST_T(std::forward<ARGGS>(args)...)),
+    m_push(push(h2.get()))
+  {}
+
+
+
+  virtual procReturn processEvent() override {
+
+   m_intput_x->size() | proc()>> for_loop()
+     >>get_element(*m_intput_x)
+     >>get_element(*m_intput_y) 
+     >> drop<0>()
+     //>> display()
+      >> m_push
+     ;
+
+
+    return success;
+  }
+
+  ref_storage<HIST_T&> get_Data() {
+    return ref_storage<HIST_T&>(*h2);
+  }
+
+
+private:
+  const std::vector<double>* m_intput_x;
+  const std::vector<double>* m_intput_y;
+  std::shared_ptr<HIST_T> h2;
+  push_impl<HIST_T> m_push;
+};
+
+
+template<>
+class Fill_HIST<TH2D> :public ProcessorBase {
+public:
+  template<typename... ARGGS>
+  Fill_HIST(plane pl, ARGGS&&... args) :
+    m_intput_x(pl.x),
+    m_intput_y(pl.y),
+    h2(new TH2D(std::forward<ARGGS>(args)...)),
+    m_push(push(h2.get())) {
+  }
+
+
+
+  virtual procReturn processEvent() override {
+    m_intput_x->size() | proc() 
+      >> for_loop()      
+      >> get_element(*m_intput_x)
+      >> get_element(*m_intput_y)
+      >> drop<0>()
+      >> m_push ;
+    
+    return success;
+  }
+
+  ref_storage<TH2D&> get_Data() {
+    return ref_storage<TH2D&>(*h2);
+  }
+
+
+private:
+  const std::vector<double>* m_intput_x;
+  const std::vector<double>* m_intput_y;
+  std::shared_ptr<TH2D> h2;
   push_impl<TH2D> m_push;
 };
 
+template<>
+class Fill_HIST<TH1D> :public ProcessorBase {
+public:
+  template<typename... ARGGS>
+  Fill_HIST(axes ax, ARGGS&&... args) :
+    m_intput_x(ax.x),
+    h2(new TH1D(std::forward<ARGGS>(args)...)),
+    m_push(push(h2.get())) {
+  }
+
+
+
+  virtual procReturn processEvent() override {
+
+param()| proc() >> for_loop(*m_intput_x) >> m_push ;
+
+
+    return success;
+  }
+
+  ref_storage<TH1D&> get_Data() {
+    return ref_storage<TH1D&>(*h2);
+  }
+
+
+private:
+  const std::vector<double>* m_intput_x;
+  const std::vector<double>* m_intput_y;
+  std::shared_ptr<TH1D> h2;
+  push_impl<TH1D> m_push;
+};
 
 DEFINE_PROC2(Residual_proc__, next__, x, y) {
   return next__(x - y);
@@ -270,15 +405,14 @@ DEFINE_PROC2(Residual_proc__, next__, x, y) {
 
 class Residual :public ProcessorBase {
 public:
-  Residual(axes vec_x, axes vec_y, const char* name) :
+  Residual(axes vec_x, axes vec_y) :
     m_intput_x(vec_x.x),
-    m_intput_y(vec_y.x),
-    H2(new TH1D(name, name, 100, -0.1,0.1)), m_push(push(H2.get())) {
+    m_intput_y(vec_y.x){
   }
 
 
   virtual bool init() override {
-    H2->Reset();
+   
     return true;
   }
 
@@ -292,25 +426,25 @@ public:
 
   virtual procReturn processEvent() override {
 
-    param() | proc() >> for_loop(*m_intput_x) >> for_loop(*m_intput_y) >> Residual_proc__() >> m_push;
+    res.clear();
+    param() | proc() >> for_loop(*m_intput_x) >> for_loop(*m_intput_y) >> Residual_proc__() >> push_first(res);
 
 
     return success;
   }
 
-  void Draw() {
-    H2->Draw("colz");
-  }
-  ref_storage<TH1D&> get_Data() {
-    return ref_storage<TH1D&>(*H2);
+
+  axes get_Data() const {
+    return  axes(&res);
   }
 private:
 
 
-  std::shared_ptr<TH1D> H2;
+  
+  std::vector<double> res;
   const std::vector<double>* m_intput_x;
   const std::vector<double>* m_intput_y;
-  push_impl<TH1D> m_push;
+  
 };
 
 
