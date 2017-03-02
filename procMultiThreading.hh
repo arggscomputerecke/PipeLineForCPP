@@ -46,7 +46,20 @@ public:
 
 
 
+class wait_for_start {
 
+  std::atomic<int> m_start;
+public: 
+wait_for_start():m_start(0){}
+  void wait() {
+    while (m_start == 0){}
+    m_start = 0;
+  }
+  void done() {
+    m_start = 1;
+    while (m_start == 1){}
+  }
+};
 
 
 
@@ -61,7 +74,9 @@ public:
     auto numOfThreads= m_num;
     auto thread_handler__= m_th;
     for (int j = 0;j < m_num; ++j) {
-      threads.push_back(std::thread([next_, start_, step_, end_, j, numOfThreads, thread_handler__]() mutable {
+      wait_for_start w_f_start;
+      threads.push_back(std::thread([next_, start_, step_, end_, j, numOfThreads, thread_handler__,&w_f_start]() mutable {
+         w_f_start.wait();
         for (auto i = start_ + step_ * j; i < end_;i += (step_ * numOfThreads)) {
           next_(i);
           thread_handler__->update();
@@ -69,6 +84,7 @@ public:
       }));
 
       m_th->push(threads.back().get_id());
+      w_f_start.done();
     }
 
     for (auto&e : threads) {
@@ -79,12 +95,12 @@ public:
   }
 
   template<typename Next_t>
-  auto operator()(Next_t&& next_, int start_, int end_) ->decltype(operator()(std::forward<Next_t>(next_), start_, end_, 1)) {
+  procReturn operator()(Next_t&& next_, int start_, int end_) {
     return operator()(std::forward<Next_t>(next_), start_, end_, 1);
   }
 
   template<typename Next_t>
-  auto operator()(Next_t&& next_, int end_) ->decltype(operator()(std::forward<Next_t>(next_), 0, end_, 1)) {
+  procReturn operator()(Next_t&& next_, int end_)  {
     return operator()(std::forward<Next_t>(next_), 0, end_, 1);
   }
 private:
@@ -123,11 +139,11 @@ public:
     return success;
   }
   template<typename Next_t>
-  auto operator()(Next_t&& next_, int start_, int end_) -> decltype(operator()(std::forward<Next_t>(next_), start_, end_, 1) ){
+  procReturn operator()(Next_t&& next_, int start_, int end_) {
     return operator()(std::forward<Next_t>(next_), start_, end_, 1);
   }
   template<typename Next_t>
-  auto operator()(Next_t&& next_, int end_) ->decltype(operator()(std::forward<Next_t>(next_), 0, end_, 1)) {
+  procReturn operator()(Next_t&& next_, int end_) {
     return operator()(std::forward<Next_t>(next_), 0, end_, 1);
   }
 private:
@@ -154,7 +170,9 @@ public:
     auto numOfThreads= m_num;
     auto thread_handler__= m_th;
 		for (int j = 0;j < m_num; ++j) {
-			threads.push_back(std::thread([next_, start_, step_, end_, j,  numOfThreads,  thread_handler__, &vec,t...]() mutable {
+		  wait_for_start w_f_start;
+			threads.push_back(std::thread([next_, start_, step_, end_, j,  numOfThreads,  thread_handler__, &vec,&w_f_start,t...]() mutable {
+        w_f_start.wait();
 				for (auto i = start_ + step_ * j; i < end_;i += (step_ * numOfThreads)) {
 					
 					next_( vec[i],t...);
@@ -163,6 +181,7 @@ public:
 			}));
 
 			m_th->push(threads.back().get_id());
+			w_f_start.done();
 		}
 
 		for (auto&e : threads) {
