@@ -7,6 +7,13 @@
 
 #include <fstream>
 #include "procMultiThreading.hh"
+#include "has_member_helper.hh"
+
+
+
+
+
+CREATE_TEST_FOR_MEMBER(has_begin, begin());
 
 
 template <typename T>
@@ -31,18 +38,18 @@ class for_loop_imple_0 {
 
 public:
 	template <typename NEXT_T, typename T>
-	procReturn operator()(NEXT_T&& next, T t) {
+  __ENABLE_IF_ARITHMETIC(T, procReturn)
+      operator()(NEXT_T&& next, T t) {
 		for (typename std::remove_all_extents<T>::type i = 0; i < t;++i) {
 			if (next(i) == stop_) {
 				return stop_;
 			}
 		}
-
 		return success;
 	}
 
 	template <typename NEXT_T, typename T>
-	procReturn operator()(NEXT_T&& next, const std::vector<T>& vec) {
+	__ENABLE_IF(has_begin<T>(), procReturn) operator()(NEXT_T&& next,  T& vec) {
 		for (auto& e : vec) {
 			if (next(e) == stop_) {
 				return stop_;
@@ -96,8 +103,8 @@ class for_loop_imple_1 {
 	using param_t = typename std::remove_all_extents<END_T>::type;
 public:
 	const param_t m_end;
-	for_loop_imple_1<END_T>(const END_T& end__) :m_end(end__) {}
-	for_loop_imple_1<END_T>(END_T&& end__) : m_end(std::move(end__)) {}
+	for_loop_imple_1<END_T>(const param_t& end__) :m_end(end__) {}
+	for_loop_imple_1<END_T>(param_t&& end__) : m_end(std::move(end__)) {}
 	template <typename NEXT_T , typename... ARGS>
 	procReturn operator()(NEXT_T&& next, ARGS&&... args) {
 		for ( param_t i = 0; i < m_end;++i) {
@@ -114,8 +121,35 @@ public:
 
 
 template <typename T>
-for_loop_imple_1<typename std::remove_all_extents<T>::type> for_loop(T&& t) {
-	return for_loop_imple_1<typename std::remove_all_extents<T>::type>(std::forward<T>(t));
+__ENABLE_IF_ARITHMETIC(T, for_loop_imple_1<T>) for_loop(T&& t) {
+	return for_loop_imple_1<T>(std::forward<T>(t));
+}
+
+
+
+template<typename VEC_T>
+class for_loop_imple_1_vec_lv {
+  
+public:
+  VEC_T m_vec;
+  for_loop_imple_1_vec_lv<VEC_T>(const VEC_T& vec__) : m_vec(vec__) {}
+  template <typename NEXT_T, typename... ARGS>
+  procReturn operator()(NEXT_T&& next, ARGS&&... args) {
+    for (auto &i :m_vec) {
+      if (next(std::forward<ARGS>(args)..., i) == stop_) {
+        return stop_;
+      }
+    }
+
+    return success;
+  }
+};
+
+template <typename T>
+
+__ENABLE_IF(has_begin<T>(), for_loop_imple_1_vec_lv<T>)
+  for_loop(T& t) {
+  return for_loop_imple_1_vec_lv<T>(t);
 }
 
 template<typename T>
