@@ -8,7 +8,7 @@
 #include "proc.hh"
 #include "procReturn.hh"
 #include <algorithm>
-
+#include <atomic>
 
 class thread_handler {
 public:
